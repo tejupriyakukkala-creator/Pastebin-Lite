@@ -6,7 +6,7 @@ let readLimiter: any = null;
 let createLimiter: any = null;
 
 function buildLimiter(maxPerMin: number) {
-  return rateLimit({
+  return (rateLimit as any)({
     windowMs: 60 * 1000,
     max: maxPerMin,
     standardHeaders: true,

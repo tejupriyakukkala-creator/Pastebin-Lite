@@ -30,8 +30,8 @@ export function createApp(): express.Application {
 
   // CORS configuration
   app.use(
-    cors({
-      origin: (origin, callback) => {
+    (cors as any)({
+      origin: (origin: any, callback: any) => {
         // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
         if (!origin) {
           return callback(null, true);
