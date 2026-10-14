@@ -1,0 +1,9 @@
+{
+  "name": "pastebin-lite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pastebin Lite - Full stack text and snippet sharing application",
+  "scripts": {
+    "verify": "node scripts/verify.mjs"
+  }
+}
