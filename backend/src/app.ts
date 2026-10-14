@@ -22,7 +22,7 @@ export function createApp(): express.Application {
 
   // Security headers via Helmet
   app.use(
-    helmet({
+    (helmet as any)({
       contentSecurityPolicy: false, // API server
       crossOriginEmbedderPolicy: false,
     })
