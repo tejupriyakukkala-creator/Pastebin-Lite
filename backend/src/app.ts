@@ -85,16 +85,7 @@ export function createApp(): express.Application {
     return dbPromise;
   };
 
-  app.use(async (_req, _res, next) => {
-    try {
-      await ensureDb();
-      next();
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  // Root informational route
+  // Root informational route (no database connection required)
   app.get("/", (_req, res) => {
     res.json({
       name: "Pastebin Lite API",
@@ -107,8 +98,20 @@ export function createApp(): express.Application {
     });
   });
 
-  // API Routes
+  // Health check routes (check database readiness independently)
   app.use("/api", healthRoutes);
+
+  // Lazy DB connection specifically for paste operations
+  app.use("/api/pastes", async (_req, _res, next) => {
+    try {
+      await ensureDb();
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Paste API Routes
   app.use("/api", pasteRoutes);
 
   // 404 handler for unknown /api routes
@@ -123,10 +126,26 @@ export function createApp(): express.Application {
 // Lazy serverless handler for environments like Vercel
 let lazyApp: express.Application | null = null;
 const serverlessHandler = (req: any, res: any) => {
-  if (!lazyApp) {
-    lazyApp = createApp();
+  try {
+    if (!lazyApp) {
+      lazyApp = createApp();
+    }
+    return lazyApp(req, res);
+  } catch (err: any) {
+    console.error("Fatal error in serverlessHandler:", err);
+    res.statusCode = 500;
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "no-store");
+    res.end(
+      JSON.stringify({
+        success: false,
+        error: {
+          code: "INTERNAL_ERROR",
+          message: err?.message || "Internal server error occurred",
+        },
+      })
+    );
   }
-  return lazyApp(req, res);
 };
 
 export default serverlessHandler;

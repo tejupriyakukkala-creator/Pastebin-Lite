@@ -4,33 +4,48 @@ import { logger } from "../utils/logger.js";
 
 let connectionPromise: Promise<typeof mongoose> | null = null;
 
-export async function connectToDatabase(retries = 5, backoffMs = 500): Promise<typeof mongoose> {
+export async function connectToDatabase(retries = 3, backoffMs = 500): Promise<typeof mongoose> {
   if (connectionPromise) {
     return connectionPromise;
   }
 
   const { MONGODB_URI } = getEnv();
+  if (!MONGODB_URI) {
+    const error: any = new Error("MONGODB_URI environment variable is missing or empty");
+    error.code = "DB_UNAVAILABLE";
+    throw error;
+  }
+
+  const isServerless = !!process.env.VERCEL;
+  const actualRetries = isServerless ? 1 : retries;
+  const timeoutMs = isServerless ? 3000 : 2000;
 
   const connectWithRetry = async (): Promise<typeof mongoose> => {
     let attempt = 0;
-    while (attempt < retries) {
+    while (attempt < actualRetries) {
       try {
         const conn = await mongoose.connect(MONGODB_URI, {
           bufferCommands: false,
-          serverSelectionTimeoutMS: 2000,
+          serverSelectionTimeoutMS: timeoutMs,
         });
         logger.info("MongoDB connected successfully");
         return conn;
       } catch (err) {
         attempt++;
-        logger.warn({ err, attempt, retries }, "MongoDB connection attempt failed");
-        if (attempt >= retries) {
-          throw err;
+        logger.warn({ err, attempt, retries: actualRetries }, "MongoDB connection attempt failed");
+        if (attempt >= actualRetries) {
+          connectionPromise = null;
+          const error: any = new Error("Unable to connect to MongoDB: " + (err as any)?.message);
+          error.code = "DB_UNAVAILABLE";
+          throw error;
         }
         await new Promise((resolve) => setTimeout(resolve, backoffMs * attempt));
       }
     }
-    throw new Error("Unable to connect to MongoDB after multiple retries");
+    connectionPromise = null;
+    const error: any = new Error("Unable to connect to MongoDB after multiple retries");
+    error.code = "DB_UNAVAILABLE";
+    throw error;
   };
 
   connectionPromise = connectWithRetry();

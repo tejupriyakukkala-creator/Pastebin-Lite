@@ -2,15 +2,23 @@ import { z } from "zod";
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(5000),
-  MONGODB_URI: z.string().min(1, "MONGODB_URI is required and cannot be empty"),
+  MONGODB_URI: z.string().default(""),
   BASE_URL: z
     .string()
-    .min(1, "BASE_URL is required")
-    .transform((url) => url.replace(/\/+$/, "")),
+    .default("")
+    .transform((url) => {
+      if (url) return url.replace(/\/+$/, "");
+      if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+      return "";
+    }),
   FRONTEND_URL: z
     .string()
-    .min(1, "FRONTEND_URL is required")
-    .transform((url) => url.replace(/\/+$/, "")),
+    .default("")
+    .transform((url) => {
+      if (url) return url.replace(/\/+$/, "");
+      if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+      return "*";
+    }),
   TEST_MODE: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   CONTENT_MAX_CHARS: z.coerce.number().int().positive().default(1000000),
