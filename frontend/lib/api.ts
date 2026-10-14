@@ -4,7 +4,8 @@ import type { PasteData } from "../types/paste.js";
 export async function fetchPasteServer(id: string): Promise<PasteData | null> {
   const backendUrl = process.env.BACKEND_URL;
   if (!backendUrl) {
-    throw new Error("Environment variable BACKEND_URL is required but not configured.");
+    console.warn("fetchPasteServer: BACKEND_URL is not configured in environment.");
+    return null;
   }
 
   const cleanUrl = backendUrl.replace(/\/+$/, "");

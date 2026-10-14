@@ -5,9 +5,10 @@ const nextConfig = {
   reactStrictMode: true,
   async rewrites() {
     if (!backendUrl) {
-      throw new Error(
-        "Environment variable BACKEND_URL is required for Next.js API rewrites, but was not defined."
+      console.warn(
+        "\n[WARNING] Environment variable BACKEND_URL is not defined.\nAPI rewrites from /api/* will be disabled until BACKEND_URL is configured in your deployment environment.\n"
       );
+      return [];
     }
     const cleanUrl = backendUrl.replace(/\/+$/, "");
     return [
