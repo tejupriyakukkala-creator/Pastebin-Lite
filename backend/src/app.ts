@@ -1,12 +1,15 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
+import mongoose from "mongoose";
 import { getEnv } from "./config/env.js";
 import { requestIdMiddleware } from "./middleware/requestId.middleware.js";
 import { notFoundMiddleware } from "./middleware/notFound.middleware.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import healthRoutes from "./routes/health.routes.js";
 import pasteRoutes from "./routes/paste.routes.js";
+import { connectToDatabase } from "./services/db.service.js";
+import { Paste } from "./models/paste.model.js";
 
 import { initRateLimiters } from "./middleware/rateLimit.middleware.js";
 
@@ -67,6 +70,43 @@ export function createApp(): express.Application {
   // Body parser with configured limit
   app.use(express.json({ limit: BODY_LIMIT }));
 
+  // Lazy DB connection for serverless invocations (e.g. Vercel)
+  let dbPromise: Promise<void> | null = null;
+  const ensureDb = async () => {
+    if (mongoose.connection.readyState === 1 || NODE_ENV === "test") {
+      return;
+    }
+    if (!dbPromise) {
+      dbPromise = (async () => {
+        await connectToDatabase();
+        await Paste.init();
+      })();
+    }
+    return dbPromise;
+  };
+
+  app.use(async (_req, _res, next) => {
+    try {
+      await ensureDb();
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Root informational route
+  app.get("/", (_req, res) => {
+    res.json({
+      name: "Pastebin Lite API",
+      status: "ok",
+      version: "1.0.0",
+      endpoints: {
+        health: "/api/healthz",
+        pastes: "/api/pastes"
+      }
+    });
+  });
+
   // API Routes
   app.use("/api", healthRoutes);
   app.use("/api", pasteRoutes);
@@ -79,3 +119,14 @@ export function createApp(): express.Application {
 
   return app;
 }
+
+// Lazy serverless handler for environments like Vercel
+let lazyApp: express.Application | null = null;
+const serverlessHandler = (req: any, res: any) => {
+  if (!lazyApp) {
+    lazyApp = createApp();
+  }
+  return lazyApp(req, res);
+};
+
+export default serverlessHandler;
