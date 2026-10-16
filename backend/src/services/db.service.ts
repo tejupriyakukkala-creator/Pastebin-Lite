@@ -5,6 +5,9 @@ import { logger } from "../utils/logger.js";
 let connectionPromise: Promise<typeof mongoose> | null = null;
 
 export async function connectToDatabase(retries = 3, backoffMs = 500): Promise<typeof mongoose> {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
+  }
   if (connectionPromise) {
     return connectionPromise;
   }
@@ -17,8 +20,8 @@ export async function connectToDatabase(retries = 3, backoffMs = 500): Promise<t
   }
 
   const isServerless = !!process.env.VERCEL;
-  const actualRetries = isServerless ? 1 : retries;
-  const timeoutMs = isServerless ? 3000 : 2000;
+  const actualRetries = isServerless ? 2 : retries;
+  const timeoutMs = isServerless ? 9000 : 5000;
 
   const connectWithRetry = async (): Promise<typeof mongoose> => {
     let attempt = 0;
