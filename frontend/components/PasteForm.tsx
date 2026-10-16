@@ -54,14 +54,25 @@ export function PasteForm() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Response is not valid JSON (e.g., 502/504 Bad Gateway or 404 from proxy)
+      }
 
-      if (res.ok) {
+      if (res.ok && data) {
         setSuccessData(data);
-      } else {
+      } else if (data?.error?.message) {
         const errResp = data as ApiErrorResponse;
-        setErrorMsg(errResp?.error?.message || "Failed to create paste. Please check your inputs.");
-        setErrorDetails(errResp?.error?.details);
+        setErrorMsg(errResp.error.message);
+        setErrorDetails(errResp.error.details);
+      } else {
+        setErrorMsg(
+          res.status === 502 || res.status === 504 || res.status === 404
+            ? `API server returned HTTP ${res.status}. Please ensure the backend server is running.`
+            : "Failed to create paste. Please check your inputs."
+        );
       }
     } catch {
       setErrorMsg("Network error connecting to API server. Please retry.");

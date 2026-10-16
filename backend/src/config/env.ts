@@ -1,8 +1,29 @@
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
+
+// Automatically load local .env file if available
+try {
+  if (typeof (process as any).loadEnvFile === "function") {
+    const candidates = [
+      path.resolve(process.cwd(), ".env"),
+      path.resolve(process.cwd(), "backend", ".env"),
+      path.resolve(process.cwd(), "..", ".env"),
+    ];
+    for (const envPath of candidates) {
+      if (fs.existsSync(envPath)) {
+        (process as any).loadEnvFile(envPath);
+        break;
+      }
+    }
+  }
+} catch {
+  // Ignore if unable to load .env file
+}
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(5000),
-  MONGODB_URI: z.string().default(""),
+  MONGODB_URI: z.string().default(process.env.NODE_ENV === "test" ? "" : "mongodb://127.0.0.1:27017/pastebin_lite"),
   BASE_URL: z
     .string()
     .default("")

@@ -2,11 +2,7 @@ import { headers } from "next/headers";
 import type { PasteData } from "../types/paste.js";
 
 export async function fetchPasteServer(id: string): Promise<PasteData | null> {
-  const backendUrl = process.env.BACKEND_URL;
-  if (!backendUrl) {
-    console.warn("fetchPasteServer: BACKEND_URL is not configured in environment.");
-    return null;
-  }
+  const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:5000";
 
   const cleanUrl = backendUrl.replace(/\/+$/, "");
   const headerList = await headers();
